@@ -11,18 +11,43 @@ with open("words.txt", "r") as words:
     # create a list 400 random words from our txt file
     test_words = choices(list(words), k=400)
 
+    # create a list of the length of each word chosen
+    len_word_list = [len(word.strip()) for word in test_words]
+
     # strip \n from each words from our list except each word at index 9
     index_nostrip = 6
+    end_of_line = 0
     final_word_list = []
+    lines_list = []
+    line = ""
+
     for i in range(len(test_words)):
-        if i != index_nostrip:
-            final_word_list.append(test_words[i].strip())
-        elif i == index_nostrip:
+        if end_of_line == index_nostrip - 1:
             final_word_list.append(test_words[i])
-            index_nostrip += 6
+            line += test_words[i].strip()
+            lines_list.append(line)
+            line = ""
+            end_of_line = 0
+        else:
+            final_word_list.append(test_words[i].strip())
+            line += f"{test_words[i].strip()} "
+            end_of_line += 1
 
     # create the final string to be used in the test
     test_text = " ".join(final_word_list)
+
+    # create a dict that contains information about each line in our text
+    test_text_dict = {}
+    line_key_index = 0
+    line_properties = {}
+    for line in lines_list:
+        line_properties["line"] = line
+        line_properties["words_length_list"] = len_word_list[0:6]
+        # delete the length of words for the line after adding it to the dictionary
+        del len_word_list[0:6]
+        test_text_dict[line_key_index] = line_properties
+        line_properties = {}
+        line_key_index += 1
 
 
 class TestPage(Frame):
@@ -31,7 +56,19 @@ class TestPage(Frame):
         Frame.__init__(self, container)
         self.config(bg="#393e46")
         self.pack(side="left")
-        self.create_page()
+        self.time = time
+        self.start_test = False
+        # Variables to keep track of user progress during test
+        self.line_index = 1
+        self.word_index = 0
+        self.char_index = 0
+        self.chars_correct = 0
+        self.words_correct = 0
+        self.accuracy_percentage = 0
+        self.chars_check = []
+        self.total_finished_words = 0
+
+        self.entry, self.timer, self.text, self.wpm, self.cpm, self.accuracy = self.create_page()
 
     def create_page(self):
         smaller_label = Label(self, text="TYPING SPEED TEST", bg="#393e46", font=("Colfax", 11, "italic"),
@@ -50,7 +87,7 @@ class TestPage(Frame):
         # Timer
         timer_text = Text(test_params_frame, width=15, height=2, highlightthickness=2.5,
                           highlightbackground="#00adb5")
-        timer_text.insert("1.0", f"{time} s")
+        timer_text.insert("1.0", f"{self.time} s")
         timer_text.tag_add("timer_tag", "1.0", "end")
         timer_text.tag_config("timer_tag", justify="center", font=("Times New Roman", 20))
         timer_text.grid(row=0, column=0, padx=100)
@@ -93,10 +130,9 @@ class TestPage(Frame):
                     highlightbackground="#00adb5")
         text.insert("1.0", test_text)
         text.tag_add("second", "1.0", "end")
-        text.tag_config("second", justify="center", font=("Times New Roman", 20))
+        text.tag_config("second", justify="left", font=("Times New Roman", 20))
         text.config(state=DISABLED)
         text.pack()
-        print(text.get("1.0", "end"))
 
         # --------------------------user Input entry  fame-------------------------#
         user_frame = Frame(self, bg="#393e46")
@@ -111,3 +147,97 @@ class TestPage(Frame):
         retry_button = Button(self, bg="#00adb5", width=20, height=2, text="Try Again",
                               font=("Colfax", 10, "bold"))
         retry_button.pack(side="right")
+
+        return entry, timer_text, text, wpm_text, cpm_text, accuracy_text
+
+    def check_user_input(self):
+        if self.entry.get() != "":
+            self.start_test = True
+        return self.start_test
+
+    def update_test_screen(self):
+        # update timer text
+        self.timer.delete("1.0", END)
+        self.timer.insert("1.0", f"{self.time} s")
+        self.timer.tag_add("timer_tag", "1.0", "end")
+        self.timer.tag_config("timer_tag", justify="center", font=("Times New Roman", 20))
+
+        # update word\min text
+        self.wpm.delete("1.0", END)
+        self.wpm.insert("1.0", f"{self.words_correct}")
+        self.wpm.tag_add("wpm_tag", "1.0", "end")
+        self.wpm.tag_config("wpm_tag", justify="center", font=("Times New Roman", 20))
+
+        # update char/min text
+        self.cpm.delete("1.0", END)
+        self.cpm.insert("1.0", f"{self.chars_correct}")
+        self.cpm.tag_add("cpm_tag", "1.0", "end")
+        self.cpm.tag_config("cpm_tag", justify="center", font=("Times New Roman", 20))
+
+        # update accuracy text
+        self.accuracy.delete("1.0", END)
+        self.accuracy.insert("1.0", f"{self.accuracy_percentage}")
+        self.accuracy.tag_add("accuracy_tag", "1.0", "end")
+        self.accuracy.tag_config("accuracy_tag", justify="center", font=("Times New Roman", 20))
+
+    def test_running(self):
+        self.update_test_screen()
+        user_input = self.entry.get()
+        len_of_target_word = test_text_dict[self.line_index - 1]['words_length_list'][self.word_index]
+
+        try:
+            if user_input[-1] == " ":
+                self.char_index += len_of_target_word + 1
+                self.word_index += 1
+                if False not in self.chars_check and len(self.chars_check) == len_of_target_word:
+                    self.words_correct += 1
+
+                self.total_finished_words += 1
+                self.accuracy_percentage = int((self.words_correct / self.total_finished_words) * 100)
+
+                if self.word_index == 6:
+                    self.text.see(f"{self.line_index + 3}.0")
+                    self.line_index += 1
+                    self.word_index = 0
+                    self.char_index = 0
+                    # add 1 for the space at beginning of each line after first line
+                    self.char_index = 1
+
+                self.chars_correct += self.chars_check.count(True)
+                self.entry.delete(0, "end")
+                print(self.char_index)
+
+            else:
+                real_text = self.text.get(f"{self.line_index}.{self.char_index}",
+                                          f"{self.line_index}.{len(user_input) + self.char_index}")
+                self.chars_check = [user_input[x] == real_text[x] for x in range(len(user_input))]
+                print(self.chars_check)
+                if len(self.chars_check) <= len_of_target_word:
+                    for i in range(len(self.chars_check)):
+                        if self.chars_check[i]:
+                            self.text.tag_add("correct-word", f"{self.line_index}.{self.char_index + i}")
+                            self.text.tag_config("correct-word", foreground="green", background="#00adb5")
+                        elif not self.chars_check[i]:
+                            self.text.tag_add("wrong-word", f"{self.line_index}.{self.char_index + i}")
+                            self.text.tag_config("wrong-word", foreground="red", background="#00adb5")
+
+
+
+
+
+
+
+
+                        # if False in self.chars_check:
+                        #     self.text.tag_add("wrong-word", f"{self.line_index}.{self.char_index}",
+                        #                       f"{self.line_index}.{len(self.chars_check) + self.char_index}")
+                        #     self.text.tag_config("wrong-word", foreground="red", background="#00adb5")
+                        #     print("here")
+                        # else:
+                        #     self.text.tag_add("correct-word", f"{self.line_index}.{self.char_index}",
+                        #                       f"{self.line_index}.{len(self.chars_check) + self.char_index}")
+                        #     self.text.tag_config("correct-word", foreground="green", background="#00adb5")
+                        #     print("here2")
+
+        except IndexError:
+            pass
