@@ -1,63 +1,73 @@
 from tkinter import *
 from random import choices
+import datetime
 
-# test varaibles
+
+# test variables
 time = 60
 wpm = 0
 cpm = 0
 accuracy = 0
 
-with open("words.txt", "r") as words:
-    # create a list 400 random words from our txt file
-    test_words = choices(list(words), k=400)
 
-    # create a list of the length of each word chosen
-    len_word_list = [len(word.strip()) for word in test_words]
+def create_text():
+    with open("words.txt", "r") as words:
+        # create a list 400 random words from our txt file
+        test_words = choices(list(words), k=600)
 
-    # strip \n from each words from our list except each word at index 9
-    index_nostrip = 6
-    end_of_line = 0
-    final_word_list = []
-    lines_list = []
-    line = ""
+        # create a list of the length of each word chosen
+        len_word_list = [len(word.strip()) for word in test_words]
 
-    for i in range(len(test_words)):
-        if end_of_line == index_nostrip - 1:
-            final_word_list.append(test_words[i])
-            line += test_words[i].strip()
-            lines_list.append(line)
-            line = ""
-            end_of_line = 0
-        else:
-            final_word_list.append(test_words[i].strip())
-            line += f"{test_words[i].strip()} "
-            end_of_line += 1
+        # strip \n from each words from our list except each word at index 9
+        index_nostrip = 6
+        end_of_line = 0
+        final_word_list = []
+        lines_list = []
+        line = ""
 
-    # create the final string to be used in the test
-    test_text = " ".join(final_word_list)
+        for i in range(len(test_words)):
+            if end_of_line == index_nostrip - 1:
+                final_word_list.append(test_words[i])
+                line += test_words[i].strip()
+                lines_list.append(line)
+                line = ""
+                end_of_line = 0
+            else:
+                final_word_list.append(test_words[i].strip())
+                line += f"{test_words[i].strip()} "
+                end_of_line += 1
 
-    # create a dict that contains information about each line in our text
-    test_text_dict = {}
-    line_key_index = 0
-    line_properties = {}
-    for line in lines_list:
-        line_properties["line"] = line
-        line_properties["words_length_list"] = len_word_list[0:6]
-        # delete the length of words for the line after adding it to the dictionary
-        del len_word_list[0:6]
-        test_text_dict[line_key_index] = line_properties
+        # create the final string to be used in the test
+        test_text = " ".join(final_word_list)
+
+        # create a dict that contains information about each line in our text
+        test_text_dict = {}
+        line_key_index = 0
         line_properties = {}
-        line_key_index += 1
+        for line in lines_list:
+            line_properties["line"] = line
+            line_properties["words_length_list"] = len_word_list[0:6]
+            # delete the length of words for the line after adding it to the dictionary
+            del len_word_list[0:6]
+            test_text_dict[line_key_index] = line_properties
+            line_properties = {}
+            line_key_index += 1
+        return test_text, test_text_dict
+
+
+test_text, test_text_dict = create_text()
 
 
 class TestPage(Frame):
 
     def __init__(self, container):
         Frame.__init__(self, container)
+        self.container = container
         self.config(bg="#393e46")
-        self.pack(side="left")
+        self.place(in_=self.container, x=0, y=0, relwidth=1, relheight=1)
         self.time = time
         self.start_test = False
+        self.test_text, self.test_text_dict = create_text()
         # Variables to keep track of user progress during test
         self.line_index = 1
         self.word_index = 0
@@ -68,7 +78,7 @@ class TestPage(Frame):
         self.chars_check = []
         self.total_finished_words = 0
 
-        self.entry, self.timer, self.text, self.wpm, self.cpm, self.accuracy = self.create_page()
+        self.entry, self.timer, self.text, self.wpm, self.cpm, self.accuracy, self.retry_button, self.test_params_frame = self.create_page()
 
     def create_page(self):
         smaller_label = Label(self, text="TYPING SPEED TEST", bg="#393e46", font=("Colfax", 11, "italic"),
@@ -128,7 +138,7 @@ class TestPage(Frame):
         # -------------------------test words text bar -----------------------------------#
         text = Text(self, width=80, height=6, highlightthickness=2.8,
                     highlightbackground="#00adb5")
-        text.insert("1.0", test_text)
+        text.insert("1.0", self.test_text)
         text.tag_add("second", "1.0", "end")
         text.tag_config("second", justify="left", font=("Times New Roman", 20))
         text.config(state=DISABLED)
@@ -145,10 +155,10 @@ class TestPage(Frame):
 
         # button to retry
         retry_button = Button(self, bg="#00adb5", width=20, height=2, text="Try Again",
-                              font=("Colfax", 10, "bold"))
+                              font=("Colfax", 10, "bold"), command=self.try_again)
         retry_button.pack(side="right")
 
-        return entry, timer_text, text, wpm_text, cpm_text, accuracy_text
+        return entry, timer_text, text, wpm_text, cpm_text, accuracy_text, retry_button, test_params_frame
 
     def check_user_input(self):
         if self.entry.get() != "":
@@ -183,7 +193,7 @@ class TestPage(Frame):
     def test_running(self):
         self.update_test_screen()
         user_input = self.entry.get()
-        len_of_target_word = test_text_dict[self.line_index - 1]['words_length_list'][self.word_index]
+        len_of_target_word = self.test_text_dict[self.line_index - 1]['words_length_list'][self.word_index]
 
         try:
             if user_input[-1] == " ":
@@ -205,39 +215,35 @@ class TestPage(Frame):
 
                 self.chars_correct += self.chars_check.count(True)
                 self.entry.delete(0, "end")
-                print(self.char_index)
 
             else:
                 real_text = self.text.get(f"{self.line_index}.{self.char_index}",
                                           f"{self.line_index}.{len(user_input) + self.char_index}")
                 self.chars_check = [user_input[x] == real_text[x] for x in range(len(user_input))]
-                print(self.chars_check)
                 if len(self.chars_check) <= len_of_target_word:
                     for i in range(len(self.chars_check)):
                         if self.chars_check[i]:
+                            self.text.tag_remove("wrong-word", f"{self.line_index}.{self.char_index + i}")
                             self.text.tag_add("correct-word", f"{self.line_index}.{self.char_index + i}")
                             self.text.tag_config("correct-word", foreground="green", background="#00adb5")
                         elif not self.chars_check[i]:
+                            self.text.tag_remove("correct-word", f"{self.line_index}.{self.char_index + i}")
                             self.text.tag_add("wrong-word", f"{self.line_index}.{self.char_index + i}")
                             self.text.tag_config("wrong-word", foreground="red", background="#00adb5")
 
 
-
-
-
-
-
-
-                        # if False in self.chars_check:
-                        #     self.text.tag_add("wrong-word", f"{self.line_index}.{self.char_index}",
-                        #                       f"{self.line_index}.{len(self.chars_check) + self.char_index}")
-                        #     self.text.tag_config("wrong-word", foreground="red", background="#00adb5")
-                        #     print("here")
-                        # else:
-                        #     self.text.tag_add("correct-word", f"{self.line_index}.{self.char_index}",
-                        #                       f"{self.line_index}.{len(self.chars_check) + self.char_index}")
-                        #     self.text.tag_config("correct-word", foreground="green", background="#00adb5")
-                        #     print("here2")
-
         except IndexError:
             pass
+
+    def save_test_result(self):
+        with open("test_results.txt", "r+") as results:
+            if results.readline() == "":
+                results.write(f"date,wpm,cpm,accuracy\n{datetime.datetime.now().strftime('%d/%b/%Y')},"
+                              f"{self.words_correct},{self.chars_correct},{self.accuracy_percentage}")
+            else:
+                results.write(f"\n{datetime.datetime.now().strftime('%d/%b/%Y')},"
+                              f"{self.words_correct},{self.chars_correct},{self.accuracy_percentage}")
+
+    def try_again(self):
+        self.destroy()
+        self.__init__(self.container)
