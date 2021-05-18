@@ -1,6 +1,4 @@
 from tkinter import *
-from tkinter import messagebox
-from random import choice, randint, shuffle
 from test_page import TestPage
 from results_page import ResultsPage
 import time
