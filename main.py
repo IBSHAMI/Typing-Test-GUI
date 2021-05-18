@@ -4,7 +4,6 @@ from results_page import ResultsPage
 import time
 
 test_is_on = None
-# start_timer = False
 test_start_time = None
 timer = 60
 entry_button_state = True
