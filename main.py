@@ -11,6 +11,8 @@ button_color_on = "#393e46"
 button_color_off = "#eeeeee"
 button1_isClicked = True
 button2_isClicked = False
+main = None
+try_again_allowed = True
 
 
 class MainWindow(Tk):
@@ -63,23 +65,27 @@ def button2_click():
 def check(event):
     global test_start_time, test_is_on, timer, entry_button_state, button1_isClicked
     if main.test_page.check_user_input() and button1_isClicked:
-        main.test_page.retry_button.config(state=DISABLED)
+        main.unbind("<KeyPress>")
+        if main.test_page.entry.get() != "":
+            main.test_page.retry_button.config(state=DISABLED)
         if not test_is_on:
             test_start_time = time.time()
         test_is_on = True
         main.test_page.test_running()
-        test_time = 5
+        test_time = main.test_page.test_time
         timer = test_time
         while timer > 0:
             timer = test_time - (time.time() - test_start_time)
             main.test_page.time = round(timer)
             main.test_page.test_running()
             main.update()
-        if test_is_on:
+        if test_is_on and main.test_page.test_time != 0:
             main.test_page.save_test_result()
+            print("here")
+        main.test_page.test_time = 0
         main.test_page.retry_button.config(state=NORMAL)
         test_is_on = False
-        main.test_page.try_again_button_clicked = False
+        main.test_page.try_again_button_check = False
         main.test_page.entry.config(state=DISABLED)
         main.test_page.timer.delete("1.0", END)
         main.test_page.timer.insert("1.0", f"TimeOver")
@@ -87,6 +93,7 @@ def check(event):
         main.test_page.timer.tag_config("timer_tag", justify="center", font=("Times New Roman", 20))
         main.test_page.timer.configure(state=DISABLED)
         entry_button_state = False
+        main.bind("<KeyPress>", check)
 
 
 if __name__ == "__main__":

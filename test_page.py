@@ -77,6 +77,7 @@ class TestPage(Frame):
         self.accuracy_percentage = 0
         self.chars_check = []
         self.total_finished_words = 0
+        self.test_time = 60
 
         self.entry, self.timer, self.text, self.wpm, self.cpm, self.accuracy, self.retry_button, self.test_params_frame = self.create_page()
 
@@ -192,6 +193,7 @@ class TestPage(Frame):
 
     def test_running(self):
         self.update_test_screen()
+        self.update()
         user_input = self.entry.get()
         len_of_target_word = self.test_text_dict[self.line_index - 1]['words_length_list'][self.word_index]
 
@@ -214,6 +216,7 @@ class TestPage(Frame):
                     self.char_index = 1
 
                 self.chars_correct += self.chars_check.count(True)
+                self.chars_check = [False for turn_false in self.chars_check if turn_false]
                 self.entry.delete(0, "end")
 
             else:
@@ -247,3 +250,4 @@ class TestPage(Frame):
     def try_again(self):
         self.destroy()
         self.__init__(self.container)
+        self.try_again_button_check = False
