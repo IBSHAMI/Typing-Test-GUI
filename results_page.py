@@ -1,5 +1,7 @@
 from tkinter import *
 
+
+# page to record the user test history in a text file
 class ResultsPage(Frame):
 
     def __init__(self, container):
